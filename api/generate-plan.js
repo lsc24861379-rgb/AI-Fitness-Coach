@@ -1,44 +1,89 @@
-{\rtf1\ansi\ansicpg936\cocoartf2822
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
-{\colortbl;\red255\green255\blue255;}
-{\*\expandedcolortbl;;}
-\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+// api/generate-plan.js
 
-\f0\fs24 \cf0 import OpenAI from "openai";\
-\
-export default async function handler(req, res) \{\
-  try \{\
-    const openai = new OpenAI(\{\
-      apiKey: process.env.OPENAI_API_KEY\
-    \});\
-\
-    const body = req.body;\
-\
-    const prompt = `\
-Generate a 7-day workout and meal plan for:\
-Gender: $\{body.gender\}\
-Age: $\{body.age\}\
-Height: $\{body.height\} cm\
-Weight: $\{body.weight\} kg\
-Training Experience: $\{body.experience\}\
-Weekly Frequency: $\{body.frequency\}\
-Equipment: $\{body.equipment\}\
-Goal: $\{body.goal\}\
-Diet Restrictions: $\{body.diet\}\
-\
-Make it structured and easy to read.\
-    `;\
-\
-    const completion = await openai.chat.completions.create(\{\
-      model: "gpt-4o-mini",\
-      messages: [\{ role: "user", content: prompt \}]\
-    \});\
-\
-    res.status(200).json(\{ result: completion.choices[0].message.content \});\
-\
-  \} catch (err) \{\
-    res.status(500).json(\{ error: err.message \});\
-  \}\
-\}\
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export default async function handler(req, res) {
+  // 处理 CORS（浏览器请求才不会报错）
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.status(200).end();
+    return;
+  }
+
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  if (req.method !== "POST") {
+    res.status(405).json({ error: "Method not allowed" });
+    return;
+  }
+
+  const {
+    age,
+    gender,
+    height,
+    weight,
+    experience,
+    frequency,
+    equipment,
+    goal,
+    diet,
+  } = req.body || {};
+
+  // 简单必填校验（可以按需删掉）
+  if (!age || !gender || !height || !weight || !frequency || !goal) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+
+  try {
+    const completion = await client.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an experienced personal trainer and nutrition coach. Create concise, realistic fitness and nutrition plans.",
+        },
+        {
+          role: "user",
+          content: `Create a 7-day fitness and meal plan for this person:
+Age: ${age}
+Gender: ${gender}
+Height: ${height} cm
+Weight: ${weight} kg
+Training Experience: ${experience}
+Weekly Training Frequency: ${frequency} days/week
+Equipment Available: ${equipment}
+Primary Goal: ${goal}
+Diet Preferences / Restrictions: ${diet}
+
+Format the answer with clear headings and bullet points. Keep total length under 800 words.`,
+        },
+      ],
+    });
+
+    const plan =
+      completion.choices?.[0]?.message?.content ||
+      "Sorry, I could not generate a plan.";
+
+    res.status(200).json({ plan });
+  } catch (error) {
+    console.error("OpenAI API error:", error);
+
+    // 尽量把错误信息返回给前端，方便你看到真实原因
+    const message =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "Unknown error";
+
+    res.status(500).json({
+      error: "Server error when calling OpenAI: " + message,
+    });
+  }
 }
