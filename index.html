@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI Fitness Coach</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    h1 {
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      background: #0070f3;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 24px;
+      white-space: pre-wrap;
+      border-top: 1px solid #ddd;
+      padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <h1>AI Fitness Coach</h1>
+
+  <label>Gender</label>
+  <select id="gender">
+    <option>Male</option>
+    <option>Female</option>
+    <option>Other</option>
+  </select>
+
+  <label>Age</label>
+  <input id="age" type="number" />
+
+  <label>Height (cm)</label>
+  <input id="height" type="number" />
+
+  <label>Weight (kg)</label>
+  <input id="weight" type="number" />
+
+  <label>Training Experience</label>
+  <select id="experience">
+    <option>Beginner</option>
+    <option>Intermediate</option>
+    <option>Advanced</option>
+  </select>
+
+  <label>Weekly Training Frequency (days)</label>
+  <input id="frequency" type="number" />
+
+  <label>Equipment Available</label>
+  <input id="equipment" placeholder="e.g., Gym, Dumbbells, Resistance Bands" />
+
+  <label>Primary Goal</label>
+  <select id="goal">
+    <option>Fat Loss</option>
+    <option>Muscle Gain</option>
+  </select>
+
+  <label>Diet Preference / Food Restrictions</label>
+  <textarea id="diet" rows="3" placeholder="e.g., No pork, High protein, Vegetarian..."></textarea>
+
+  <button id="btn">Generate My Fitness Plan</button>
+
+  <div id="result"></div>
+
+  <script>
+    const btn = document.getElementById('btn');
+    const result = document.getElementById('result');
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+      result.textContent = '';
+
+      const body = {
+        gender: document.getElementById('gender').value,
+        age: document.getElementById('age').value,
+        height: document.getElementById('height').value,
+        weight: document.getElementById('weight').value,
+        experience: document.getElementById('experience').value,
+        frequency: document.getElementById('frequency').value,
+        equipment: document.getElementById('equipment').value,
+        goal: document.getElementById('goal').value,
+        diet: document.getElementById('diet').value,
+      };
+
+      try {
+        const res = await fetch('/api/generate-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+          throw new Error('API error: ' + res.status);
+        }
+
+        const data = await res.json();
+        result.textContent = data.plan || JSON.stringify(data, null, 2);
+      } catch (err) {
+        console.error(err);
+        result.textContent = 'Error generating plan: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Generate My Fitness Plan';
+      }
+    });
+  </script>
+</body>
+</html>
